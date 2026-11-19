@@ -1,0 +1,10 @@
+[Unit]
+Description=IA en 1 minute - daily AI news video
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/ai-news-daily
+ExecStart=%h/ai-news-daily/.venv/bin/python run_daily.py
+TimeoutStartSec=1800

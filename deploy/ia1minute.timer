@@ -1,0 +1,10 @@
+[Unit]
+Description=Run IA en 1 minute every day at 05:30
+
+[Timer]
+OnCalendar=*-*-* 05:30:00 Europe/Zurich
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

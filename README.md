@@ -1,0 +1,61 @@
+# IA en 1 minute 🇫🇷🤖
+
+Всеки ден автоматично едноминутно вертикално видео (1080×1920) с 3 новини за изкуствения интелект.
+**Глас на френски, вградени субтитри на английски.**
+
+## Как работи
+
+1. **`src/fetch.py`** събира новини от последните 36 ч. от RSS емисии и Hacker News (`config.yaml`), маха дублиращите се и вече използваните.
+2. **`src/scriptgen.py`** подава новините на Claude (`claude -p`, т.е. Claude Code на сървъра). Той избира 3 и пише сценарий на френски (120–150 думи) + английски превод изречение по изречение. Само факти от статиите, с проверка и до 3 опита.
+3. **`src/tts.py`** прави френския глас изречение по изречение: Microsoft Edge глас (`fr-FR-HenriNeural`), а ако няма интернет — локален Piper. Нормализира звука и ускорява леко, ако излиза над 59 сек.
+4. **`src/subtitles.py`** — английски субтитри с точни времена (`.srt` + стилизиран `.ass`)
+5. **`src/visuals.py`** — карти със заглавие, номер и източник (без чужди снимки, без проблеми с авторски права)
+6. **`src/render.py`** сглобява всичко с ffmpeg: анимиран градиентен фон, карти, прогрес лента и вградени субтитри.
+
+## Резултат за деня → `output/ГГГГ-ММ-ДД/`
+
+| Файл | Какво е |
+|---|---|
+| `video.mp4` | готовото видео |
+| `subtitles_en.srt` | субтитрите отделно (за YouTube) |
+| `thumbnail.png` | миниатюра |
+| `publish.txt` | заглавие, описание, хаштагове и линкове към източниците |
+| `script.json` | сценарият |
+
+## Инсталация на сървъра (Ubuntu)
+
+```bash
+git clone https://github.com/bnpetkov/ai-news-daily.git ~/ai-news-daily
+cd ~/ai-news-daily
+./deploy/install.sh
+```
+
+Скриптът инсталира ffmpeg, Python пакетите и офлайн френския глас. Пуска и таймер, който работи **всеки ден в 05:30** (дори когато никой не е логнат).
+
+Тест веднага:
+```bash
+.venv/bin/python run_daily.py --force
+```
+
+## Команди
+
+```bash
+.venv/bin/python run_daily.py              # пълен цикъл за днес
+.venv/bin/python run_daily.py --dry-run    # само новини + сценарий
+.venv/bin/python run_daily.py --force      # прави днешното видео наново
+.venv/bin/python run_daily.py --from-script output/2026-11-20/script.json   # рендер от готов/редактиран сценарий
+systemctl --user list-timers ia1minute.timer   # кога е следващото пускане
+journalctl --user -u ia1minute -n 50           # лог от последното пускане
+```
+
+## Настройки (`config.yaml`)
+
+- `news.feeds` — източниците (добавяй и махай свободно)
+- `tts.edge_voice` — гласът (`fr-FR-HenriNeural`, `fr-FR-DeniseNeural`, `fr-FR-RemyMultilingualNeural` …)
+- `video.handle` — името на канала в края на видеото
+- `video.colors` — цветовете
+- `video.music` — по избор, музика без авторски права (напр. `assets/music.mp3`)
+- `llm.backend` — `claude_cli` (по подразбиране) или `anthropic_api` (с ключ в `.env`)
+
+## Бележка за Claude Code на сървъра
+Ако нещо не работи, кажи на Claude Code: *„Прочети README.md и логовете в `logs/` на ai-news-daily и оправи проблема“.*

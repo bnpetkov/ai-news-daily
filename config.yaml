@@ -1,0 +1,83 @@
+# ─────────────────────────────────────────────────────────────
+#  IA en 1 minute — configuration
+# ─────────────────────────────────────────────────────────────
+
+timezone: Europe/Zurich
+
+# ── News collection ──────────────────────────────────────────
+news:
+  max_age_hours: 36          # only articles newer than this
+  max_candidates: 40         # how many candidates are sent to the LLM
+  history_days: 30           # do not repeat stories used in the last N days
+  stories_per_video: 3
+  min_stories: 2             # below this, no video is made
+  # Keywords used for general tech feeds (filter: true)
+  keywords: [" ai ", "a.i.", "artificial intelligence", "intelligence artificielle", " ia ",
+             "llm", "gpt", "claude", "gemini", "llama", "mistral", "openai", "anthropic",
+             "deepmind", "chatbot", "machine learning", "neural", "agent", "model",
+             "modèle", "nvidia", "copilot", "hugging face", "diffusion", "robot"]
+  feeds:
+    - {name: "TechCrunch",       url: "https://techcrunch.com/category/artificial-intelligence/feed/"}
+    - {name: "The Verge",        url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"}
+    - {name: "VentureBeat",      url: "https://venturebeat.com/category/ai/feed/"}
+    - {name: "Ars Technica",     url: "https://feeds.arstechnica.com/arstechnica/technology-lab", filter: true}
+    - {name: "MIT Tech Review",  url: "https://www.technologyreview.com/topic/artificial-intelligence/feed"}
+    - {name: "OpenAI",           url: "https://openai.com/news/rss.xml"}
+    - {name: "Google DeepMind",  url: "https://deepmind.google/blog/rss.xml"}
+    - {name: "Google AI",        url: "https://blog.google/technology/ai/rss/"}
+    - {name: "Hugging Face",     url: "https://huggingface.co/blog/feed.xml"}
+    - {name: "NVIDIA",           url: "https://blogs.nvidia.com/feed/", filter: true}
+    - {name: "Numerama",         url: "https://www.numerama.com/feed/", filter: true}
+    - {name: "Frandroid",        url: "https://www.frandroid.com/feed", filter: true}
+    - {name: "Le Monde Pixels",  url: "https://www.lemonde.fr/pixels/rss_full.xml", filter: true}
+  hacker_news:
+    enabled: true
+    min_points: 150
+
+# ── Script writing (LLM) ─────────────────────────────────────
+llm:
+  # claude_cli  → uses the `claude` command (Claude Code) already installed on the server
+  # anthropic_api → uses ANTHROPIC_API_KEY from .env
+  backend: claude_cli
+  api_model: claude-sonnet-5-5
+  timeout_sec: 300
+  words_min: 120
+  words_max: 150
+
+# ── Voice ────────────────────────────────────────────────────
+tts:
+  # edge = Microsoft neural voices (free, needs internet) ; piper = local, offline
+  engine: edge
+  fallback: piper
+  edge_voice: fr-FR-HenriNeural      # or fr-FR-DeniseNeural, fr-FR-RemyMultilingualNeural …
+  edge_rate: "+8%"
+  piper_model: assets/voices/fr_FR-siwis-medium.onnx
+  piper_length_scale: 1.0            # < 1 = faster
+  pause_sentence: 0.22               # seconds between sentences
+  pause_section: 0.45                # seconds between hook / stories / outro
+  max_duration: 59.0
+  max_speedup: 1.12
+
+# ── Look & feel ──────────────────────────────────────────────
+video:
+  width: 1080
+  height: 1920
+  fps: 30
+  crf: 20
+  brand: "IA EN 1 MINUTE"
+  handle: "@ia1minute"               # shown on the outro card — change to your channel
+  colors:
+    bg: ["0x0b1026", "0x2a1a5e", "0x0f3460", "0x1b0b3a"]
+    accent: "#7c5cff"
+    accent2: "#22d3ee"
+    text: "#ffffff"
+    muted: "#b8c0e0"
+  music: ""                          # optional royalty-free mp3 in assets/, e.g. assets/music.mp3
+  music_volume: 0.10
+
+subtitles:
+  font: Inter
+  size: 62
+  margin_v: 470                      # distance from bottom (keeps clear of TikTok/Reels buttons)
+  max_chars_line: 34
+  max_lines: 2

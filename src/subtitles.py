@@ -65,15 +65,27 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Sub,{s['font']},{s['size']},&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,5,3,2,70,70,{s['margin_v']},1
+Style: Sub,{s['font']},{s['size']},&H00FFFFFF,&H50E6D2C8,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,5,3,2,70,70,{s['margin_v']},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     events = []
     for c in cues:
-        txt = c["text"].replace("\n", "\\N").replace("{", "(").replace("}", ")")
+        # karaoke: each word lights up (dim → white) as it is spoken
+        dur_cs = max(1, int(round((c["end"] - c["start"]) * 100 * 0.92)))
+        lines = c["text"].replace("{", "(").replace("}", ")").split("\n")
+        words = [(w, li) for li, line in enumerate(lines) for w in line.split()]
+        weights = [len(w) + 2 for w, _ in words]
+        tot = sum(weights) or 1
+        parts, prev_line, used = [], 0, 0
+        for k, ((w, li), wt) in enumerate(zip(words, weights)):
+            cs = dur_cs - used if k == len(words) - 1 else max(1, round(dur_cs * wt / tot))
+            used += cs
+            sep = "\\N" if li != prev_line else (" " if parts else "")
+            parts.append(f"{sep}{{\\k{cs}}}{w}")
+            prev_line = li
         # quick pop-in animation
         anim = r"{\fad(80,60)\t(0,120,\fscx104\fscy104)\t(120,220,\fscx100\fscy100)}"
-        events.append(f"Dialogue: 0,{_ass_time(c['start'])},{_ass_time(c['end'])},Sub,,0,0,0,,{anim}{txt}")
+        events.append(f"Dialogue: 0,{_ass_time(c['start'])},{_ass_time(c['end'])},Sub,,0,0,0,,{anim}{''.join(parts)}")
     path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")

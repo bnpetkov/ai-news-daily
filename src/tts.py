@@ -11,10 +11,24 @@ RATE = 24000  # Hz, mono 16-bit
 
 def _edge(text: str, out_mp3: Path, cfg: dict):
     import edge_tts
-    comm = edge_tts.Communicate(text, cfg["edge_voice"], rate=cfg.get("edge_rate", "+0%"))
-    asyncio.run(comm.save(str(out_mp3)))
-    if not out_mp3.exists() or out_mp3.stat().st_size < 1000:
-        raise RuntimeError("edge-tts produced no audio")
+    voices = cfg.get("edge_voices") or [cfg.get("edge_voice", "fr-FR-HenriNeural")]
+    if cfg.get("_edge_ok"):  # once a voice worked, stick with it for the whole video
+        voices = [cfg["_edge_ok"]]
+    last = None
+    import time
+    for voice in [v for v in voices for _ in range(2)]:  # each voice gets 2 tries (network hiccups)
+        try:
+            out_mp3.unlink(missing_ok=True)
+            comm = edge_tts.Communicate(text, voice, rate=cfg.get("edge_rate", "+0%"))
+            asyncio.run(comm.save(str(out_mp3)))
+            if out_mp3.exists() and out_mp3.stat().st_size > 1000:
+                cfg["_edge_ok"] = voice
+                return
+            last = "no audio"
+        except Exception as e:
+            last = e
+            time.sleep(1)
+    raise RuntimeError(f"edge-tts failed: {last}")
 
 
 def _piper(text: str, out_wav: Path, cfg: dict):
@@ -37,6 +51,8 @@ def synth_sentence(text: str, dst: Path, cfg: dict) -> str:
     engines = [cfg["engine"]] + ([cfg["fallback"]] if cfg.get("fallback") and cfg["fallback"] != cfg["engine"] else [])
     last = None
     for eng in engines:
+        if eng == "edge" and cfg.get("_edge_dead"):
+            continue
         try:
             raw = dst.with_suffix(".raw.mp3" if eng == "edge" else ".raw.wav")
             (_edge if eng == "edge" else _piper)(text, raw, cfg)
@@ -46,6 +62,8 @@ def synth_sentence(text: str, dst: Path, cfg: dict) -> str:
         except Exception as e:
             last = e
             log.warning("tts engine %s failed: %s", eng, str(e)[:300])
+            if eng == "edge":
+                cfg["_edge_dead"] = True  # don't keep retrying for every sentence
     raise RuntimeError(f"all TTS engines failed: {last}")
 
 

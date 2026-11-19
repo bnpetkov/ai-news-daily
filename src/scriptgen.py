@@ -33,6 +33,11 @@ RÈGLES DU SCRIPT
 - headline_fr : titre à l'écran, 6 mots maximum.
 - sentences_en / hook_en / outro_en : traduction anglaise naturelle, MÊME NOMBRE de phrases que le français.
 - source : nom du média ; url : l'URL exacte de l'article utilisé.
+- key_figure : LE chiffre clé de l'actualité s'il y en a un dans l'article (ex. {{"value": "83 $", "label": "prix de l'action"}},
+  {{"value": "-40 %", "label": "de clics vers les sites"}}). value ≤ 14 caractères, label ≤ 30 caractères.
+  Si l'article ne contient aucun chiffre marquant, mets null. N'invente jamais de chiffre.
+- broll_query_en : 2 à 4 mots anglais décrivant une vidéo d'illustration générique (banque d'images), sans marque
+  ni personne célèbre (ex. "stock market screen", "data center servers", "hacker typing code").
 {extra}
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {{
@@ -40,7 +45,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
   "hook_fr": "...", "hook_en": "...",
   "stories": [
     {{"headline_fr": "...", "sentences_fr": ["...", "..."], "sentences_en": ["...", "..."],
-      "source": "...", "url": "https://..."}}
+      "source": "...", "url": "https://...",
+      "key_figure": {{"value": "...", "label": "..."}} ou null, "broll_query_en": "..."}}
   ],
   "outro_fr": "...", "outro_en": "...",
   "description": "description pour la publication (2-3 phrases en français)",
@@ -81,6 +87,17 @@ def _ask_api(prompt: str, model: str, timeout: int) -> str:
     return "".join(b.get("text", "") for b in r.json()["content"])
 
 
+def _ask_ollama(prompt: str, lcfg: dict) -> str:
+    """Local model through Ollama (http://localhost:11434). Free and offline, but slower / weaker."""
+    r = requests.post(lcfg.get("ollama_url", "http://localhost:11434") + "/api/generate",
+                      timeout=lcfg.get("ollama_timeout_sec", 2400),
+                      json={"model": lcfg.get("ollama_model", "qwen2.5:3b"), "prompt": prompt,
+                            "stream": False, "format": "json",
+                            "options": {"num_ctx": 8192, "temperature": 0.4}})
+    r.raise_for_status()
+    return r.json()["response"]
+
+
 def word_count(script: dict) -> int:
     parts = [script["hook_fr"], script["outro_fr"]]
     for s in script["stories"]:
@@ -107,6 +124,10 @@ def validate(script: dict, cfg: dict, candidate_urls: set[str] | None) -> list[s
             errs.append(f"story {i}: url not among the provided articles")
         if len(s.get("headline_fr", "").split()) > 8:
             errs.append(f"story {i}: headline too long")
+        kf = s.get("key_figure")
+        if kf is not None and (not isinstance(kf, dict) or not kf.get("value")
+                               or len(str(kf["value"])) > 16 or len(str(kf.get("label", ""))) > 34):
+            errs.append(f"story {i}: key_figure must be null or {{value ≤14 chars, label ≤30 chars}}")
     wc = word_count(script)
     lo, hi = cfg["llm"]["words_min"], cfg["llm"]["words_max"]
     if not lo <= wc <= hi:
@@ -116,9 +137,13 @@ def validate(script: dict, cfg: dict, candidate_urls: set[str] | None) -> list[s
 
 def write_script(cfg: dict, articles: list[dict], date_fr: str, shorter: bool = False) -> dict:
     lcfg = cfg["llm"]
+    local = lcfg["backend"] == "ollama"
+    if local:  # small local models: fewer, shorter articles so it fits and stays fast
+        articles = articles[: lcfg.get("ollama_max_articles", 15)]
     n = min(cfg["news"]["stories_per_video"], len(articles))
     compact = [{"source": a["source"], "also_covered_by": a.get("also", []), "title": a["title"],
-                "url": a["url"], "published": a["published"], "summary": a["summary"]} for a in articles]
+                "url": a["url"], "published": a["published"],
+                "summary": a["summary"][:350] if local else a["summary"]} for a in articles]
     wmin, wmax = lcfg["words_min"], lcfg["words_max"]
     if shorter:
         wmin, wmax = wmin - 15, wmax - 20
@@ -131,6 +156,9 @@ def write_script(cfg: dict, articles: list[dict], date_fr: str, shorter: bool = 
         try:
             if lcfg["backend"] == "anthropic_api":
                 raw = _ask_api(prompt, lcfg["api_model"], lcfg["timeout_sec"])
+            elif local:
+                log.info("asking local model %s (can take several minutes)…", lcfg.get("ollama_model"))
+                raw = _ask_ollama(prompt, lcfg)
             else:
                 raw = _ask_claude_cli(prompt, lcfg["timeout_sec"])
             script = _extract_json(raw)

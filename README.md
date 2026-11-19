@@ -51,10 +51,11 @@ journalctl --user -u ia1minute -n 50           # лог от последнот�
 ## Настройки (`config.yaml`)
 
 - `news.feeds` — източниците (добавяй и махай свободно)
-- `tts.edge_voice` — гласът (`fr-FR-HenriNeural`, `fr-FR-DeniseNeural`, `fr-FR-RemyMultilingualNeural` …)
+- `tts.edge_voices` — гласовете по ред на опитване (по подразбиране `fr-FR-RemyMultilingualNeural`, най-естественият мъжки; женски: `fr-FR-VivienneMultilingualNeural`)
 - `video.handle` — името на канала в края на видеото
 - `video.colors` — цветовете
-- `video.music` — по избор, музика без авторски права (напр. `assets/music.mp3`)
+- `video.music` — `auto` = всеки ден се генерира оригинална фонова музика (без авторски права), която автоматично се снижава, когато говори гласът; `""` = без музика; или път до твой файл
+- **B-roll видеа:** вземи безплатен ключ от https://www.pexels.com/api/ и го сложи в `.env` като `PEXELS_API_KEY=...`. Тогава зад всяка новина ще има кратко стоково видео. Без ключ се ползва анимираният фон.
 - `llm.backend` — `claude_cli` (по подразбиране) или `anthropic_api` (с ключ в `.env`)
 
 ## Бележка за Claude Code на сървъра

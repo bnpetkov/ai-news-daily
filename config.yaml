@@ -36,21 +36,29 @@ news:
 
 # ── Script writing (LLM) ─────────────────────────────────────
 llm:
-  # claude_cli  → uses the `claude` command (Claude Code) already installed on the server
+  # claude_cli    → uses the `claude` command (Claude Code) already installed on the server
   # anthropic_api → uses ANTHROPIC_API_KEY from .env
+  # ollama        → local model, free and offline (slower, weaker French, more risk of errors)
   backend: claude_cli
+  fallback: claude_cli               # used if the main backend fails ("" = none)
+  ollama_model: qwen2.5:3b
+  ollama_url: http://localhost:11434
+  ollama_max_articles: 15
+  ollama_timeout_sec: 2400
   api_model: claude-sonnet-5-5
   timeout_sec: 300
-  words_min: 120
-  words_max: 150
+  words_min: 160
+  words_max: 180
 
 # ── Voice ────────────────────────────────────────────────────
 tts:
   # edge = Microsoft neural voices (free, needs internet) ; piper = local, offline
   engine: edge
   fallback: piper
-  edge_voice: fr-FR-HenriNeural      # or fr-FR-DeniseNeural, fr-FR-RemyMultilingualNeural …
-  edge_rate: "+8%"
+  # tried in order — the multilingual voices sound the most natural
+  edge_voices: [fr-FR-RemyMultilingualNeural, fr-FR-HenriNeural]
+  # others: fr-FR-VivienneMultilingualNeural (female), fr-FR-DeniseNeural, fr-FR-EloiseNeural
+  edge_rate: "+0%"
   piper_model: assets/voices/fr_FR-siwis-medium.onnx
   piper_length_scale: 1.0            # < 1 = faster
   pause_sentence: 0.22               # seconds between sentences
@@ -72,12 +80,14 @@ video:
     accent2: "#22d3ee"
     text: "#ffffff"
     muted: "#b8c0e0"
-  music: ""                          # optional royalty-free mp3 in assets/, e.g. assets/music.mp3
-  music_volume: 0.10
+  # auto = original music generated every day (no copyright) ; "" = no music ;
+  # or a path to your own royalty-free track, e.g. assets/music.mp3
+  music: auto
+  music_volume: 0.22                 # music is automatically lowered while the voice speaks
 
 subtitles:
   font: Inter
   size: 62
-  margin_v: 470                      # distance from bottom (keeps clear of TikTok/Reels buttons)
+  margin_v: 430                      # distance from bottom (keeps clear of TikTok/Reels buttons)
   max_chars_line: 34
   max_lines: 2
